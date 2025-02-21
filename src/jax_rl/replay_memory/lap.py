@@ -32,7 +32,7 @@ class LAPReplayMemory(SimpleReplayMemory):
         """Append transition."""
         assert len(transition) == 5
         obs, action, reward, next_obs, float_done = transition
-        action = action / self.action_scale - self.action_bias
+        action = (action - self.action_bias) / self.action_scale
         reward = np.array([reward])
         float_done = np.array([float_done])
         zz = np.concatenate((obs, action, reward, next_obs, float_done), 0)
