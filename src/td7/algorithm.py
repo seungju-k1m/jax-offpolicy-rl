@@ -288,7 +288,7 @@ class TD7Algorithm:
         self, batch_size: int, replay_memory: SimpleReplayMemory | LAPReplayMemory
     ) -> dict[str, float]:
         """Train."""
-        self.agent.train = True
+        self.n_runs += 1
         batch = replay_memory.sample(batch_size)
         carry = self._train(
             # Neural Network
@@ -327,8 +327,6 @@ class TD7Algorithm:
         self.value_min = min(value_min, self.value_min)
         if isinstance(replay_memory, LAPReplayMemory):
             replay_memory.update_priority(priority)
-            self.value_target_max = self.value_max
-            self.value_target_max = self.value_max
         if self.n_runs % self.target_update_rate == 0:
             (
                 self.agent.encoder_state,
@@ -345,7 +343,6 @@ class TD7Algorithm:
             self.value_target_min = self.value_min
             if isinstance(replay_memory, LAPReplayMemory):
                 replay_memory.reset_max_priority()
-        self.n_runs += 1
         self.agent.train = False
         return info
 
@@ -619,7 +616,7 @@ class TD7Algorithm:
                 next_obs,
                 noise_key,
             )
-            noise = jax.random.normal(noise_key, next_action.shape) * target_noise
+            noise = (jax.random.normal(noise_key, next_action.shape) * target_noise).clip(-0.5, 0.5)
             next_action = jnp.clip(next_action + noise, -1.0, 1.0)
 
             next_zs = encoder_state.apply_fn(

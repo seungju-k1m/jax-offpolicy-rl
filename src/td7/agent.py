@@ -17,9 +17,9 @@ from jax_rl import RLTrainState
 
 
 DEFAULT_NET_KWARGS: dict[str, Sequence[int]] = {
-    "encoder": [256],
-    "dynamics": [256] + [256],
-    "critic": [256] + [1],
+    "encoder": [256] * 3,
+    "dynamics": [256] * 3,
+    "critic": [256] * 3 + [1],
     # Add last dimension
     "actor": [256, 256, 256],
 }
@@ -154,7 +154,7 @@ class TD7Agent:
             params=self.encoder.init(encoder_key, obs),
             target_params=self.encoder.init(encoder_key, obs),
             target_fixed_params=self.encoder.init(encoder_key, obs),
-            tx=self.optimizer_class(learning_rate=encoder_lr, eps=1e-6),
+            tx=self.optimizer_class(learning_rate=encoder_lr),
             key=encoder_key,
         )
         zs = self.encoder_state.apply_fn(self.encoder_state.params, obs)
@@ -169,7 +169,7 @@ class TD7Agent:
             params=self.dynamics.init(dynamics_key, zs, action),
             target_params=self.dynamics.init(dynamics_key, zs, action),
             target_fixed_params=self.dynamics.init(dynamics_key, zs, action),
-            tx=self.optimizer_class(learning_rate=encoder_lr, eps=1e-6),
+            tx=self.optimizer_class(learning_rate=encoder_lr),
             key=dynamics_key,
         )
         zsa = self.dynamics_state.apply_fn(self.dynamics_state.params, zs, action)
@@ -186,7 +186,7 @@ class TD7Agent:
             params=self.qfn.init(qf_key, obs, action, zsa, zs),
             target_params=self.qfn.init(qf_key, obs, action, zsa, zs),
             target_fixed_params=self.qfn.init(qf_key, obs, action, zsa, zs),
-            tx=self.optimizer_class(learning_rate=critic_lr, eps=1e-6),
+            tx=self.optimizer_class(learning_rate=critic_lr),
             key=qf_key,
         )
 
@@ -200,7 +200,7 @@ class TD7Agent:
             params=self.actor.init(actor_key, obs, zs, train=False),
             target_params=self.actor.init(actor_key, obs, zs, train=False),
             target_fixed_params=self.actor.init(actor_key, obs, zs, train=False),
-            tx=self.optimizer_class(learning_rate=actor_lr, eps=1e-6),
+            tx=self.optimizer_class(learning_rate=actor_lr),
             key=actor_key,
         )
 
