@@ -12,12 +12,12 @@ This repository contains a **JAX-based implementation** of various **off-policy 
 - **SALE-TQC**
 - **SIMBA**
 
-## Learning Curves
+## Learning Curves (WIP)
 Plots showing the performance of different algorithms:
 - **X-axis**: Timestep
 - **Y-axis**: Performance
 
-## Benchmark: Training Speed vs PyTorch Version
+## Benchmark: Training Speed vs PyTorch Version (WIP)
 A performance comparison between JAX and PyTorch implementations in terms of training speed.
 
 ---
@@ -33,7 +33,7 @@ rye sync
 
 ### Usage
 ```bash
-rye run python cli.py sale-tqc --env-id $ENV_ID --save-path "save/SALE-TQC" --seed 1 --use-progressbar --ent-coef 0.
+rye run python cli.py td7 --env-id Humanoid-v4 --save-path "save/TD7" --seed 1 --use-progressbar
 ```
 
 ### Results
