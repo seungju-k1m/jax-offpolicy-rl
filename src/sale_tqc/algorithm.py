@@ -25,29 +25,6 @@ from jax_rl.utils import log_train_infos
 from jax_rl import evaluate_agent
 
 
-class EntropyCoef(nn.Module):
-    ent_coef_init: float = 1.0
-
-    @nn.compact
-    def __call__(self) -> jnp.ndarray:
-        log_ent_coef = self.param(
-            "log_ent_coef",
-            init_fn=lambda key: jnp.full((), jnp.log(self.ent_coef_init)),
-        )
-        return jnp.exp(log_ent_coef)
-
-
-class ConstantEntropyCoef(nn.Module):
-    ent_coef_init: float = 1.0
-
-    @nn.compact
-    def __call__(self) -> float:
-        # Hack to not optimize the entropy coefficient while not having to use if/else for the jit
-        # TODO: add parameter in train to remove that hack
-        self.param("dummy_param", init_fn=lambda key: jnp.full((), self.ent_coef_init))
-        return self.ent_coef_init
-
-
 class SALETQCAlgorithm:
     """SALE-TQC Algorithm."""
 
