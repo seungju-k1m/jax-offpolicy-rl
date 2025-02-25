@@ -12,6 +12,16 @@ class RLTrainState(TrainState):  # type: ignore[misc]
 from jax_rl import utils
 from jax_rl import replay_memory
 from jax_rl import rollout
+from jax_rl.evaluate_agent import evaluate_agent
+from jax_rl.auto_ent import create_ent_coef_state
+from jax_rl.abc import BaseAgent
 
 
-__all__ = ["replay_memory", "rollout", "utils"]
+__all__ = [
+    "replay_memory",
+    "rollout",
+    "utils",
+    "evaluate_agent",
+    "BaseAgent",
+    "create_ent_coef_state",
+]
