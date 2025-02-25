@@ -9,7 +9,7 @@ This repository contains a **JAX-based implementation** of various **off-policy 
 
 ## Implemented Algorithms
 - **TD7**
-- **SALE-TQC**
+- **SALE-TQC** : SALE Representation (TD7) + TQC
 - **SIMBA**
 
 ## Learning Curves (WIP)
