@@ -1,0 +1,36 @@
+[project]
+name = "jax-sac-td3-td7"
+version = "0.1.0"
+description = "Add your description here"
+dependencies = [
+    "gymnasium[mujoco]==0.29.1",
+    "flax>=0.10.3",
+    "tqdm>=4.67.1",
+    "click>=8.1.8",
+    "jax-cuda12-pjrt==0.4.31",
+    "jax[cuda12]==0.4.31",
+    "jaxlib==0.4.31",
+    "nvidia-cublas-cu12==12.1.3.1",
+    "jax-cuda12-plugin==0.4.31",
+    "stable-baselines3>=2.5.0",
+    "tensorflow-probability>=0.25.0",
+    "sbx-rl>=0.20.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.0",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jax_rl", "src/td7", "src/tqc", "src/simba"]
