@@ -8,6 +8,7 @@ import flax
 import gymnasium
 import jax
 import jax.flatten_util
+from flax.training.train_state import TrainState
 
 # from tqdm.rich import tqdm
 import optax
@@ -15,6 +16,7 @@ from tqdm import tqdm
 import jax.numpy as jnp
 from gymnasium.wrappers import RecordEpisodeStatistics
 
+from jax_rl.auto_ent import create_ent_coef_state
 from jax_rl.replay_memory import (
     LAPReplayMemory,
     SimpleReplayMemory,
@@ -34,7 +36,6 @@ class SimbaAlgorithm:
         self,
         agent: SimbaAgent,
         discount_factor: float = 0.99,
-        tmp: float = 0.1,
         ent_coef: float = 0.1,
         policy_freq: int = 2,
         *args,
@@ -47,10 +48,11 @@ class SimbaAlgorithm:
         self.best_agent = deepcopy(self.ckpt_agent)
         self.policy_freq = policy_freq
         self.discount_factor = discount_factor
-        self.tmp = tmp
-        self.ent_coef = ent_coef
         self.key = self.agent.key
         self.n_runs: int = 0
+        _, ent_key = jax.random.split(self.key)
+        self.ent_coef_state = create_ent_coef_state(ent_coef, ent_key)
+        self.target_entropy = -float(self.agent.action_dim / 2)
 
     # Train Parts !!!!
     ###########################################################################################
@@ -70,12 +72,12 @@ class SimbaAlgorithm:
             # Neural Network
             self.agent.actor_state,
             self.agent.qfn_state,
+            self.ent_coef_state,
             # Train
             self.discount_factor,
-            self.tmp,
-            self.ent_coef,
             self.policy_freq,
             self.agent.n_quntile_target,
+            self.target_entropy,
             # Train.
             self.key,
             # Variable
@@ -84,6 +86,7 @@ class SimbaAlgorithm:
         )
         self.agent.actor_state = carry["actor_state"]
         self.agent.qfn_state = carry["qfn_state"]
+        self.ent_coef_state = carry["ent_coef_state"]
         self.key = carry["key"]
 
         info = carry["info"]
@@ -112,10 +115,9 @@ class SimbaAlgorithm:
         static_argnames=[
             "cls",
             "discount_factor",
-            "tmp",
-            "ent_coef",
             "policy_freq",
             "n_quantile_target",
+            "target_entropy",
         ],
     )
     def _train(
@@ -123,12 +125,12 @@ class SimbaAlgorithm:
         # neural network arch
         actor_state: RLTrainState,
         qfn_state: RLTrainState,
+        ent_coef_state: TrainState,
         # Train
         discount_factor: float,
-        tmp: float,
-        ent_coef,
         policy_freq: int,
         n_quantile_target: int,
+        target_entropy: float,
         key: jax.Array,
         # Variable
         n_runs: int,
@@ -144,11 +146,13 @@ class SimbaAlgorithm:
             key: jnp.array(0.0)
             for key in [
                 "loss/critic",
-                "entropy/mean",
                 "loss/actor",
+                "loss/temp",
+                "entropy/mean",
                 "value/mean",
                 "grad/actor",
                 "grad/qfn",
+                "grad/temp",
                 "weight/critic",
                 "weight/actor",
             ]
@@ -156,6 +160,7 @@ class SimbaAlgorithm:
         carry = {
             "actor_state": actor_state,
             "qfn_state": qfn_state,
+            "ent_coef_state": ent_coef_state,
             "key": key,
             "info": dummy_info,
         }
@@ -173,6 +178,7 @@ class SimbaAlgorithm:
             ) = cls._update_critic(
                 actor_state,
                 qfn_state,
+                ent_coef_state,
                 obs,
                 action,
                 reward,
@@ -180,7 +186,6 @@ class SimbaAlgorithm:
                 done,
                 discount_factor,
                 n_quantile_target,
-                tmp,
                 key,
             )
 
@@ -188,22 +193,26 @@ class SimbaAlgorithm:
                 return cls._update_actor(
                     actor_state,
                     qfn_state,
+                    ent_coef_state,
                     obs,
-                    ent_coef,
+                    target_entropy,
                     key,
                 )
 
             def skip_update_actor():
                 return (
                     actor_state,
+                    ent_coef_state,
                     key,
                     {
                         key: jnp.nan
                         for key in [
                             "loss/actor",
+                            "loss/temp",
                             "entropy/mean",
                             "value/mean",
                             "grad/actor",
+                            "grad/temp",
                             "weight/actor",
                         ]
                     },
@@ -219,6 +228,7 @@ class SimbaAlgorithm:
             return {
                 "actor_state": actor_state,
                 "qfn_state": qfn_state,
+                "ent_coef_state": ent_coef_state,
                 "key": key,
                 "info": info,
             }
@@ -229,11 +239,12 @@ class SimbaAlgorithm:
     @staticmethod
     @partial(
         jax.jit,
-        static_argnames=["discount_factor", "n_quantile_target", "tmp"],
+        static_argnames=["discount_factor", "n_quantile_target"],
     )
     def _update_critic(
         actor_state: RLTrainState,
         qfn_state: RLTrainState,
+        ent_coef_state: TrainState,
         obs: jax.Array,
         action: jax.Array,
         reward: jax.Array,
@@ -241,7 +252,6 @@ class SimbaAlgorithm:
         done: jax.Array,
         discount_factor: float,
         n_quantile_target: int,
-        tmp: float,
         key: jax.Array,
     ) -> tuple[RLTrainState, jax.Array, dict[str, float]]:
         """Update critic."""
@@ -267,7 +277,8 @@ class SimbaAlgorithm:
                 next_qvalue.reshape(batch, n_critic * n_qunatile), axis=-1
             )
             # Batch, N_Qunatile_Target
-            next_qvalue = next_qvalue[:, :n_quantile_target] + tmp * entropy
+            ent_coef = ent_coef_state.apply_fn({"params": ent_coef_state.params})
+            next_qvalue = next_qvalue[:, :n_quantile_target] + ent_coef * entropy
             q_target = reward + discount_factor * next_qvalue * done
 
             # Batch, N,Critic, N_Quantile
@@ -325,14 +336,15 @@ class SimbaAlgorithm:
         return qfn_state, key, info
 
     @staticmethod
-    @partial(jax.jit, static_argnames=["ent_coef"])
+    @partial(jax.jit, static_argnames=["target_entropy"])
     def _update_actor(
         actor_state: RLTrainState,
         qfn_state: RLTrainState,
+        ent_coef_state: TrainState,
         obs: jax.Array,
-        ent_coef: float,
+        target_entropy: float,
         key: jax.Array,
-    ) -> tuple[RLTrainState, jax.Array, dict[str, float]]:
+    ) -> tuple[RLTrainState, TrainState, jax.Array, dict[str, float]]:
         """Update actor."""
         key, _ = jax.random.split(key, 2)
 
@@ -345,6 +357,7 @@ class SimbaAlgorithm:
                 key,
             )
             qvalue = qfn_state.apply_fn(qfn_state.params, obs, action)
+            ent_coef = ent_coef_state.apply_fn({"params": ent_coef_state.params})
 
             batch, _, _ = qvalue.shape
             qvalue = qvalue.reshape(batch, -1).mean(axis=-1)
@@ -361,14 +374,28 @@ class SimbaAlgorithm:
         actor_params, _ = jax.flatten_util.ravel_pytree(actor_state.params["params"])
         weight_actor = jnp.linalg.norm(actor_params)
 
+        def temperature_loss(temp_params) -> jax.Array:
+            """."""
+            ent_coef_value = ent_coef_state.apply_fn({"params": temp_params})
+            ent_coef_loss = ent_coef_value * (entropy - target_entropy)  # type: ignore[union-attr]
+            return ent_coef_loss.mean()
+
+        temp_loss, temp_grads = jax.value_and_grad(temperature_loss)(
+            ent_coef_state.params
+        )
+        ent_coef_state = ent_coef_state.apply_gradients(grads=temp_grads)
+        flat_temp_grads, _ = jax.flatten_util.ravel_pytree(temp_grads)
+
         info = {
             "loss/actor": loss,
+            "loss/temp": temp_loss,
             "entropy/mean": entropy.mean(),
             "value/mean": qvalue.mean(),
             "grad/actor": jnp.linalg.norm(flat_grads),
+            "grad/temp": jnp.linalg.norm(flat_temp_grads),
             "weight/actor": weight_actor,
         }
-        return actor_state, key, info
+        return actor_state, ent_coef_state, key, info
 
     ###########################################################################################
 
