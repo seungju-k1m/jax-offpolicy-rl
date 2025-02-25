@@ -17,7 +17,6 @@ from simba.network import Actor, VectorCritic
 from jax_rl.utils import (
     get_action_bias_scale,
     get_obs_action_dim,
-    compute_action_entropy,
 )
 from simba import RLTrainState
 

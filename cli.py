@@ -31,7 +31,6 @@ def cli():
 
 
 cli.add_command(cli_td7)
-cli.add_command(cli_tqt7)
 cli.add_command(cli_sale_tqc)
 cli.add_command(cli_simba)
 

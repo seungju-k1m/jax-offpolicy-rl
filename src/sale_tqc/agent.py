@@ -20,7 +20,6 @@ from td7.network import Actor, Dynamics, Encoder, VectorCritic
 from jax_rl.utils import (
     get_action_bias_scale,
     get_obs_action_dim,
-    compute_action_entropy,
 )
 from jax_rl import RLTrainState
 
