@@ -33,4 +33,4 @@ dev-dependencies = []
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/jax_rl", "src/td7", "src/tqc", "src/simba"]
+packages = ["src/jax_rl", "src/td7", "src/sale_tqc", "src/simba"]
