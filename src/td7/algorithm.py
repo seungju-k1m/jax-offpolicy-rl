@@ -616,7 +616,9 @@ class TD7Algorithm:
                 next_obs,
                 noise_key,
             )
-            noise = (jax.random.normal(noise_key, next_action.shape) * target_noise).clip(-0.5, 0.5)
+            noise = (
+                jax.random.normal(noise_key, next_action.shape) * target_noise
+            ).clip(-0.5, 0.5)
             next_action = jnp.clip(next_action + noise, -1.0, 1.0)
 
             next_zs = encoder_state.apply_fn(
