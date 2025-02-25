@@ -1,5 +1,5 @@
 [project]
-name = "jax-offline-rl"
+name = "jax-offpolicy-rl"
 version = "0.1.0"
 description = "Add your description here"
 dependencies = [
