@@ -1,5 +1,5 @@
 [project]
-name = "jax-sac-td3-td7"
+name = "jax-offline-rl"
 version = "0.1.0"
 description = "Add your description here"
 dependencies = [
