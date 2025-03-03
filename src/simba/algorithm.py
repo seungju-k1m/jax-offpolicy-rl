@@ -67,7 +67,6 @@ class SimbaAlgorithm:
         # Normalize.
         batch["obs"] = self.agent.normalize(batch["obs"])
         batch["next_obs"] = self.agent.normalize(batch["next_obs"])
-
         carry = self._train(
             # Neural Network
             self.agent.actor_state,
@@ -169,6 +168,7 @@ class SimbaAlgorithm:
             """Update."""
             actor_state = carry["actor_state"]
             qfn_state = carry["qfn_state"]
+            ent_coef_state = carry["ent_coef_state"]
             key = carry["key"]
             info: dict[str, Any] = carry["info"]
             (
@@ -218,7 +218,7 @@ class SimbaAlgorithm:
                     },
                 )
 
-            actor_state, key, actor_info = jax.lax.cond(
+            actor_state, ent_coef_state, key, actor_info = jax.lax.cond(
                 n_runs % policy_freq == 0, update_actor, skip_update_actor
             )
 

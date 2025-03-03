@@ -1,5 +1,4 @@
 from copy import deepcopy
-from functools import partial
 import os
 from typing import Any
 import flax
@@ -190,7 +189,7 @@ class SimbaAgent:
             params=self.qfn.init(qf_key, obs, action),
             target_params=self.qfn.init(qf_key, obs, action),
             tx=self.optimizer_class(
-                learning_rate=critic_lr, eps=1e-6, weight_decay=critic_weight_decay
+                learning_rate=critic_lr,weight_decay=critic_weight_decay
             ),
             key=qf_key,
         )
@@ -203,7 +202,7 @@ class SimbaAgent:
             params=self.actor.init(actor_key, obs),
             target_params=self.actor.init(actor_key, obs),
             tx=self.optimizer_class(
-                learning_rate=actor_lr, eps=1e-6, weight_decay=actor_weight_decay
+                learning_rate=actor_lr,weight_decay=actor_weight_decay
             ),
             key=actor_key,
         )
@@ -222,6 +221,8 @@ class SimbaAgent:
         """Sample."""
         if obs.ndim == 1:
             obs = np.expand_dims(obs, 0)
+        
+        obs = self.normalize(obs)
         if deterministic:
             action, self.key = self._get_deterministic_action(
                 self.actor_state,
@@ -280,10 +281,5 @@ class SimbaAgent:
 
         # action = tanh(u)
         action = dist.sample(seed=noise_key)
-        batch_size = action.shape[0]
-        # Calculate entropy of action
-        entropy = compute_action_entropy(
-            jnp.reshape(raw_mean, -1), jnp.reshape(jnp.exp(log_std), -1), key
-        )
-        entropy = jnp.reshape(entropy, (batch_size, -1)).sum(-1, keepdims=True)
-        return action, entropy, key
+        log_prob = dist.log_prob(action).reshape(-1, 1)
+        return action, -log_prob, key

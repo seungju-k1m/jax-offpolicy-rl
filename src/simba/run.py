@@ -60,13 +60,6 @@ def args_for_simba(func: Callable) -> Callable:
         help="Policy network update frequency",
     )
     @click.option(
-        "--tmp",
-        type=float,
-        default=0.1,
-        show_default=True,
-        help="Temperature for Critic.",
-    )
-    @click.option(
         "--ent-coef",
         type=float,
         default=0.1,
@@ -132,7 +125,6 @@ def run_simba(
     n_quantile: int = 25,
     n_quantile_drop: int = 5,
     total_timesteps: int = 3_000_000,
-    tmp: float = 0.1,
     ent_coef: float = 0.1,
     save_path: str = "./save/SIMBA",
     output_name: str | None = None,
@@ -146,13 +138,14 @@ def run_simba(
         n_critics=n_critics,
         n_quantile=n_quantile,
         n_quantile_drop=n_quantile_drop,
+        **kwargs,
     )
     key = jax.random.PRNGKey(seed)
     agent.build(key)
     algorithm = SimbaAlgorithm(
         agent,
-        tmp=tmp,
         ent_coef=ent_coef,
+        **kwargs,
     )
 
     # SAVE_DIR
