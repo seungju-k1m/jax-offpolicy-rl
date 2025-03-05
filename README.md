@@ -12,13 +12,9 @@ This repository contains a **JAX-based implementation** of various **off-policy 
 - **SALE-TQC** : SALE Representation (TD7) + TQC
 - **SIMBA**
 
-## Learning Curves (WIP)
-Plots showing the performance of different algorithms:
-- **X-axis**: Timestep
-- **Y-axis**: Performance
-
-## Benchmark: Training Speed vs PyTorch Version (WIP)
-A performance comparison between JAX and PyTorch implementations in terms of training speed.
+## Learning Curves
+- With 5 seeds experiment, 95% Confidence interval
+![Learning Curve](./doc/learning_curve.png)
 
 ---
 ### Getting Started
